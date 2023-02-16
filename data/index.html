@@ -1,0 +1,84 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>ESP Web Server</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" type="text/css" href="style.css">
+<title>ESP Web Server</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+</head>
+<body>
+  <div class="topnav">
+    <h1>SP6PWT Antenna Controller</h1>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h2>Output</h2>
+      <p class="state">active: <span id="state">%STATE%</span></p>
+      <p><button onClick ="setAntenna(this)" id="button0" class="button">OFF</button></p>
+      <p><button onClick ="setAntenna(this)" id="button1" class="button">Antenna 1</button></p>
+      <p><button onClick ="setAntenna(this)" id="button2" class="button">Antenna 2</button></p>
+      <p><button onClick ="setAntenna(this)" id="button3" class="button">Antenna 3</button></p>
+      <p><button onClick ="setAntenna(this)" id="button4" class="button">Antenna 4</button></p>
+      <p><button onClick ="setAntenna(this)" id="button5" class="button">Antenna 5</button></p>
+      <p><button onClick ="setAntenna(this)" id="button6" class="button">Antenna 6</button></p>
+    </div>
+  </div>
+<script>
+  var gateway = `ws://${window.location.hostname}/ws`;
+  var websocket;
+  window.addEventListener('load', onLoad);
+  function initWebSocket() {
+    console.log('Trying to open a WebSocket connection...');
+    websocket = new WebSocket(gateway);
+    websocket.onopen    = onOpen;
+    websocket.onclose   = onClose;
+    websocket.onmessage = onMessage;
+  }
+  function onOpen(event) {
+    console.log('Connection opened');
+    getAntenna();
+  }
+  function onClose(event) {
+    console.log('Connection closed');
+    setTimeout(initWebSocket, 2000);
+  }
+  function onMessage(event) {
+    console.log("onMessage: "+event.data);
+    var buttonNumber;
+    buttonNumber = event.data;
+    document.getElementById('state').innerHTML = buttonNumber;
+    updateColor(buttonNumber);
+  }
+  function onLoad(event) {
+    initWebSocket();
+  }
+
+  function getAntenna(){
+    websocket.send('getCurrentAntenna');
+  }
+  function updateColor(buttonNumber){
+    for (var i = 0; i < 7; i++){
+        if(i != buttonNumber)
+        {
+            document.getElementById("button"+i).style.backgroundColor = "#0f8b8d";
+        }
+        else
+        {
+            document.getElementById("button"+i).style.backgroundColor = "red";
+        }
+    }
+  }
+  function setAntenna(element){
+    var buttonNumber = element.id.charAt(element.id.length-1);
+    websocket.send(buttonNumber);
+    updateColor(buttonNumber);
+    console.log(buttonNumber);
+    
+    //document.getElementById('state').innerHTML = "Antenna "+buttonNumber;
+  }
+</script>
+</body>
+</html>
