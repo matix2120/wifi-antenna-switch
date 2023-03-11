@@ -10,37 +10,29 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
- 
-Ticker ticker;
-WiFiManager wifiManager;
 
-Adafruit_PCD8544 display = Adafruit_PCD8544(7, 6, 5, 4, 3);
+#include "configuration.h"
+ 
+#define CLK D2
+#define DIN D5
+#define DC  D6
+#define CE  D7
+#define RST D8
+
+
+
+Adafruit_PCD8544 display = Adafruit_PCD8544(CLK, DIN, DC, CE, RST);
 
 bool ledState;
 const int ledPin = D4;
 unsigned int activeAntenna = 0;
 
-void tick()
- {
-   //toggle state
-   int state = digitalRead(LED_BUILTIN);
-   digitalWrite(LED_BUILTIN, !state);
- }
-
-void configModeCallback (WiFiManager *myWiFiManager) {
-   Serial.println("Entered config mode");
-   Serial.println(WiFi.softAPIP());
-   Serial.println(myWiFiManager->getConfigPortalSSID());
-   //entered config mode, make led toggle faster
-   ticker.attach(0.2, tick);
- }
-
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
-void notifyClients() {
-  String answer = String(activeAntenna);
+void responseActiveAntenna() {
+  String answer = String("{\"ant\":\"" + String(activeAntenna) + "\"}");
   ws.textAll(answer);
 }
 
@@ -50,15 +42,23 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     data[len] = 0;
     if (strcmp((char*)data, "getCurrentAntenna") == 0) {
 
-      notifyClients();
+
+
+      responseActiveAntenna();
+    }
+    else if (strcmp((char*)data, "getNames") == 0) {
+      char json[256]; 
+
+      sprintf(json, "[ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" ]", getAntennaName(0), getAntennaName(1), getAntennaName(2), getAntennaName(3), getAntennaName(4));
+      ws.textAll(json);
     }
     else {
       activeAntenna = atoi((char*)data);
       Serial.print("set antenna: ");
       Serial.println(activeAntenna);
-      notifyClients();
+      responseActiveAntenna();
     }
-  }
+  } 
 }
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
@@ -87,27 +87,60 @@ void initWebSocket() {
 void setup(){
   Serial.begin(115200);
 
+  display.begin();
+  display.clearDisplay();
+  display.setContrast(55);
+  display.display();
+  
+
+
+  //display.clearDisplay();
+
   //set led pin as output
    pinMode(LED_BUILTIN, OUTPUT);
-   // start ticker with 0.5 because we start in AP mode and try to connect
-   ticker.attach(0.5, tick);
+
 
   if(!LittleFS.begin()){
     Serial.println("An Error has occurred while mounting LittleFS");
     return;
   }
 
+  loadConfig();
+  Serial.println(getAntennaName(3));
+  setAntennaName(3, "antena podziemna");
+  Serial.println(getAntennaName(3));
 
-// ESP.eraseConfig();
-// delay(1000);
+  //storeConfig();
 
-  //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
-  wifiManager.setAPCallback(configModeCallback);
+  // int memAmount = 1024;
+  // uint8_t * temp = (uint8_t *)malloc(memAmount);
+  // Serial.println(memAmount);
+
+  // while (temp != NULL)
+  // {
+  //   memAmount += 1024;
+  //   temp = (uint8_t*)realloc(temp, memAmount);
+  //   Serial.println(memAmount);
+  // }
+  // free(temp);
+
+  //ESP.eraseConfig();
+  //delay(1000);
+
+
+  WiFiManager wifiManager;
+  // wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
   wifiManager.autoConnect("AntennaController");
 
-  ticker.detach();
+  //ticker.detach();
    //keep LED on
   digitalWrite(LED_BUILTIN, LOW);
+
+  display.setTextSize(1);
+  display.setTextColor(BLACK);
+  display.setCursor(0,0);
+  display.println(WiFi.localIP());
+  display.display();
 
   initWebSocket();
 
@@ -120,6 +153,7 @@ void setup(){
   });
 
   server.begin();
+
 }
 
 void loop() {

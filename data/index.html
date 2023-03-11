@@ -15,15 +15,13 @@
   </div>
   <div class="content">
     <div class="card">
-      <h2>Output</h2>
-      <p class="state">active: <span id="state">%STATE%</span></p>
-      <p><button onClick ="setAntenna(this)" id="button0" class="button">OFF</button></p>
-      <p><button onClick ="setAntenna(this)" id="button1" class="button">Antenna 1</button></p>
-      <p><button onClick ="setAntenna(this)" id="button2" class="button">Antenna 2</button></p>
-      <p><button onClick ="setAntenna(this)" id="button3" class="button">Antenna 3</button></p>
-      <p><button onClick ="setAntenna(this)" id="button4" class="button">Antenna 4</button></p>
-      <p><button onClick ="setAntenna(this)" id="button5" class="button">Antenna 5</button></p>
-      <p><button onClick ="setAntenna(this)" id="button6" class="button">Antenna 6</button></p>
+      <p class="state">Active output: <span id="state">%STATE%</span></p>
+      <p><button onClick ="setAntenna(this)" id="button0" class="button-ant button-off">OFF</button></p>
+      <p><button onClick ="setAntenna(this)" id="button1" class="button-ant">ANT1</button> <button onclick="edit(this)" id="edit1" class="button">edit</button></p>
+      <p><button onClick ="setAntenna(this)" id="button2" class="button-ant">ANT2</button> <button onclick="edit(this)" id="edit2" class="button">edit</button></p>
+      <p><button onClick ="setAntenna(this)" id="button3" class="button-ant">ANT3</button> <button onclick="edit(this)" id="edit3" class="button">edit</button></p>
+      <p><button onClick ="setAntenna(this)" id="button4" class="button-ant">ANT4</button> <button onclick="edit(this)" id="edit4" class="button">edit</button></p>
+      <p><button onClick ="setAntenna(this)" id="button5" class="button-ant">ANT5</button> <button onclick="edit(this)" id="edit5" class="button">edit</button></p>
     </div>
   </div>
 <script>
@@ -39,7 +37,8 @@
   }
   function onOpen(event) {
     console.log('Connection opened');
-    getAntenna();
+    websocket.send('getNames');
+    websocket.send('getCurrentAntenna');
   }
   function onClose(event) {
     console.log('Connection closed');
@@ -47,20 +46,27 @@
   }
   function onMessage(event) {
     console.log("onMessage: "+event.data);
-    var buttonNumber;
-    buttonNumber = event.data;
-    document.getElementById('state').innerHTML = buttonNumber;
-    updateColor(buttonNumber);
+    let jsonData = JSON.parse(event.data);
+    if (jsonData.hasOwnProperty("ant")) { 
+      var buttonNumber;
+      buttonNumber = jsonData.ant;
+      document.getElementById('state').innerHTML = buttonNumber;
+      updateColor(buttonNumber);
+    }
+    else {
+      let buttons = document.getElementsByClassName("button-ant");
+      for (let i = 1; i < buttons.length; i++) {
+        let button = buttons[i];
+        button.innerHTML = jsonData[i-1];
+      }
+    }
   }
   function onLoad(event) {
     initWebSocket();
   }
 
-  function getAntenna(){
-    websocket.send('getCurrentAntenna');
-  }
   function updateColor(buttonNumber){
-    for (var i = 0; i < 7; i++){
+    for (var i = 0; i < 6; i++){
         if(i != buttonNumber)
         {
             document.getElementById("button"+i).style.backgroundColor = "#0f8b8d";
@@ -75,9 +81,24 @@
     var buttonNumber = element.id.charAt(element.id.length-1);
     websocket.send(buttonNumber);
     updateColor(buttonNumber);
-    console.log(buttonNumber);
+    console.log("set antenna: " +buttonNumber);
     
     //document.getElementById('state').innerHTML = "Antenna "+buttonNumber;
+  }
+
+  function edit(element) {
+    var buttonNumber = element.id.charAt(element.id.length-1);
+    var name = prompt("Nowa nazwa (bez polskich znakow):", "");
+
+    if (name != null) {
+      console.log(buttonNumber + " New name: " + name);
+      const nameJson = {
+        button: name
+      };
+      websocket.send(JSON.stringify(nameJson));
+    } else { 
+      console.log("No new name.");
+    }
   }
 </script>
 </body>
