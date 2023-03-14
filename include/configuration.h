@@ -13,7 +13,7 @@ void storeConfig();
 
 typedef struct config_t {
     int contrast;
-    char *antennaNames[5];
+    char *antennaNames[6];
 } config_t;
 
 #endif

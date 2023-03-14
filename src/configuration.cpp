@@ -1,13 +1,12 @@
 #include <LittleFS.h>
-
 #include "configuration.h"
 
 config_t controllerConfig;
 
- const char *getAntennaName(unsigned int num)
- {
+const char *getAntennaName(unsigned int num)
+{
     return (controllerConfig.antennaNames[num]);
- }
+}
 
 void setAntennaName(unsigned int num, char* name)
 {
@@ -16,7 +15,7 @@ void setAntennaName(unsigned int num, char* name)
     {
         Serial.println("realloc failed");
     }
-    strncpy(controllerConfig.antennaNames[num], name, strlen(name)+1);
+    memcpy(controllerConfig.antennaNames[num], name, strlen(name)+1);
 }
 
 
@@ -27,7 +26,7 @@ void loadConfig(void)
         Serial.println("Failed to open file for reading...");
     return;
     }
-    
+
     unsigned int fileSize = file.size(); //TODO: Set size limit
     char *configBuf = (char *)calloc(fileSize, sizeof(char));
     file.readBytesUntil('\n', configBuf, fileSize);
@@ -36,7 +35,7 @@ void loadConfig(void)
     char *buf = configBuf;
     unsigned int nameLen = 0;
 
-    for (size_t i = 0; i < 5 && ((buf = strtok(buf, ",")) != NULL); i++)
+    for (unsigned int i = 0; i < 6 && ((buf = strtok(buf, ",")) != NULL); i++)
     {
         nameLen = strlen(buf)+1;
         controllerConfig.antennaNames[i] = (char *)malloc(nameLen);
@@ -46,6 +45,7 @@ void loadConfig(void)
         }
         strncpy(controllerConfig.antennaNames[i], buf, nameLen);
         buf = NULL;
+
     }
 
     Serial.println("Config loaded from filesystem");
@@ -59,21 +59,54 @@ void storeConfig(void)
     return;
     }
 
-    char *buf = NULL;
+    char *buf = (char *)calloc(1,1);
     unsigned int bufLen = 0;
 
-    for (size_t i = 0; i < 5; i++)
+    for (unsigned int i = 0; i < 6; i++)
     {
+        unsigned int newNameLen = strlen(controllerConfig.antennaNames[i]) + 1;
         // allocate space for name followed by a comma
-        bufLen += strlen(controllerConfig.antennaNames[i]) + 1; 
-        buf = (char *)realloc(buf, bufLen);
+        bufLen += newNameLen;
 
+            // Serial.println("in struct:");
+            // for (unsigned int j = 0; j < strlen(controllerConfig.antennaNames[i]) + 1; j++)
+            // {
+            //     Serial.print(controllerConfig.antennaNames[i][j],HEX);
+            //     Serial.print(" ");
+            // }
+            // Serial.println();
+            // Serial.print("bufLen: ");
+            // Serial.print(bufLen);
+            // Serial.print(" newNameLen: ");
+            // Serial.println(newNameLen);
+
+        buf = (char *)realloc(buf, bufLen);
+        if (buf == NULL)
+        {
+            Serial.println("Unable to realloc");
+        }
+        memset((void*)&buf[bufLen-newNameLen], 0, newNameLen); // zero freshly alocated bytes
         strncat(buf, controllerConfig.antennaNames[i], bufLen-1); // copy the name
-        strncat(buf, ",", 1); // and then following comma
+        strcat(buf, ","); // and then following comma
+            // for (unsigned int i = 0; i < bufLen; i++)
+            // {
+            //     Serial.print(buf[i],HEX);
+            //     Serial.print(" ");
+            // }
+            // Serial.println();
+            // Serial.println();
     }
     buf[bufLen-1] = '\n'; // replace last comma with new line
-    
 
+        // Serial.println("string:");
+        // for (unsigned int i = 0; i < bufLen; i++)
+        // {
+        //     Serial.print(buf[i],HEX);
+        //     Serial.print(" ");
+        // }
+        // Serial.println();
+
+    file.print(buf);
     Serial.println("Config stored to filesystem");
     Serial.print(buf);
     Serial.println("***");

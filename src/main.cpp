@@ -12,7 +12,7 @@
 #include <Adafruit_PCD8544.h>
 
 #include "configuration.h"
- 
+
 #define CLK D2
 #define DIN D5
 #define DC  D6
@@ -49,7 +49,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     else if (strcmp((char*)data, "getNames") == 0) {
       char json[256]; 
 
-      sprintf(json, "[ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" ]", getAntennaName(0), getAntennaName(1), getAntennaName(2), getAntennaName(3), getAntennaName(4));
+      sprintf(json, "[ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" ]", getAntennaName(1), getAntennaName(2), getAntennaName(3), getAntennaName(4), getAntennaName(5));
       ws.textAll(json);
     }
     else {
@@ -58,7 +58,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       Serial.println(activeAntenna);
       responseActiveAntenna();
     }
-  } 
+  }
 }
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
@@ -84,17 +84,32 @@ void initWebSocket() {
   server.addHandler(&ws);
 }
 
+void updateDisplay() {
+  display.clearDisplay();
+
+  display.setCursor(0,0);
+  display.setTextSize(1);
+  display.println(WiFi.localIP());
+
+  display.setCursor(0,16);
+  display.setTextSize(2);
+  display.println(getAntennaName(activeAntenna));
+
+  display.display();
+}
+
 void setup(){
   Serial.begin(115200);
 
   display.begin();
   display.clearDisplay();
   display.setContrast(55);
+  display.setTextColor(BLACK);
   display.display();
-  
 
-
-  //display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(1);
+  display.println("Startup...");
 
   //set led pin as output
    pinMode(LED_BUILTIN, OUTPUT);
@@ -106,11 +121,13 @@ void setup(){
   }
 
   loadConfig();
-  Serial.println(getAntennaName(3));
+  Serial.println(getAntennaName(0));
   setAntennaName(3, "antena podziemna");
-  Serial.println(getAntennaName(3));
 
-  //storeConfig();
+
+  storeConfig();
+
+    Serial.println(getAntennaName(0));
 
   // int memAmount = 1024;
   // uint8_t * temp = (uint8_t *)malloc(memAmount);
@@ -136,11 +153,7 @@ void setup(){
    //keep LED on
   digitalWrite(LED_BUILTIN, LOW);
 
-  display.setTextSize(1);
-  display.setTextColor(BLACK);
-  display.setCursor(0,0);
-  display.println(WiFi.localIP());
-  display.display();
+
 
   initWebSocket();
 
@@ -153,10 +166,17 @@ void setup(){
   });
 
   server.begin();
-
+  updateDisplay();
 }
 
 void loop() {
+  static unsigned int previousAntenna;
   ws.cleanupClients();
   digitalWrite(ledPin, ledState);
+
+  if (previousAntenna != activeAntenna)
+  {
+    updateDisplay();
+    previousAntenna = activeAntenna;
+  }
 }
