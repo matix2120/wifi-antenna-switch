@@ -8,21 +8,12 @@
 #include <ESPAsyncWebServer.h>
 #include <Ticker.h>
 #include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_PCD8544.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
 #include "configuration.h"
 
-#define CLK D2
-#define DIN D5
-#define DC  D6
-#define CE  D7
-#define RST D8
-
-
-
-Adafruit_PCD8544 display = Adafruit_PCD8544(CLK, DIN, DC, CE, RST);
-
+LiquidCrystal_I2C lcd(0x27,20,2);
 bool ledState;
 const int ledPin = D4;
 unsigned int activeAntenna = 0;
@@ -41,8 +32,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
     data[len] = 0;
     if (strcmp((char*)data, "getCurrentAntenna") == 0) {
-
-
 
       responseActiveAntenna();
     }
@@ -85,31 +74,20 @@ void initWebSocket() {
 }
 
 void updateDisplay() {
-  display.clearDisplay();
-
-  display.setCursor(0,0);
-  display.setTextSize(1);
-  display.println(WiFi.localIP());
-
-  display.setCursor(0,16);
-  display.setTextSize(2);
-  display.println(getAntennaName(activeAntenna));
-
-  display.display();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(WiFi.localIP());
+  lcd.setCursor(0,1);
+  lcd.print(getAntennaName(activeAntenna));
 }
 
 void setup(){
   Serial.begin(115200);
-
-  display.begin();
-  display.clearDisplay();
-  display.setContrast(55);
-  display.setTextColor(BLACK);
-  display.display();
-
-  display.setCursor(0,0);
-  display.setTextSize(1);
-  display.println("Startup...");
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Startup...");
 
   //set led pin as output
    pinMode(LED_BUILTIN, OUTPUT);
