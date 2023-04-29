@@ -10,12 +10,20 @@ const char *getAntennaName(unsigned int num)
 
 void setAntennaName(unsigned int num, char* name)
 {
-    controllerConfig.antennaNames[num] = (char *)realloc(controllerConfig.antennaNames[num], strlen(name)+1);
+    uint8_t len = strlen(name) + 1;
+    if (len > 16)
+    {
+        len = 16;
+    }
+
+    controllerConfig.antennaNames[num] = (char *)realloc(controllerConfig.antennaNames[num], len);
     if(controllerConfig.antennaNames[num] == NULL)
     {
         Serial.println("realloc failed");
     }
-    memcpy(controllerConfig.antennaNames[num], name, strlen(name)+1);
+    memcpy(controllerConfig.antennaNames[num], name, len);
+    controllerConfig.antennaNames[num][len] = NULL;
+    storeConfig();
 }
 
 

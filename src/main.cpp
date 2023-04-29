@@ -13,6 +13,8 @@
 
 #include "configuration.h"
 
+void updateDisplay(void);
+
 LiquidCrystal_I2C lcd(0x27,20,2);
 bool ledState;
 const int ledPin = D4;
@@ -26,22 +28,35 @@ void responseActiveAntenna() {
   String answer = String("{\"ant\":\"" + String(activeAntenna) + "\"}");
   ws.textAll(answer);
 }
+void responseNewNames(){
+  char json[256];
+
+  sprintf(json, "[ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" ]", getAntennaName(1), getAntennaName(2), getAntennaName(3), getAntennaName(4), getAntennaName(5));
+  ws.textAll(json);
+}
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo*)arg;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
     data[len] = 0;
     if (strcmp((char*)data, "getCurrentAntenna") == 0) {
-
+      Serial.println("getCurrentAntenna");
       responseActiveAntenna();
     }
     else if (strcmp((char*)data, "getNames") == 0) {
-      char json[256]; 
-
-      sprintf(json, "[ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" ]", getAntennaName(1), getAntennaName(2), getAntennaName(3), getAntennaName(4), getAntennaName(5));
-      ws.textAll(json);
+      Serial.println("getNames");
+      responseNewNames();
+    }
+    else if (strncmp((char*)data, "new", 3) == 0) {
+      Serial.print("newName ");
+      Serial.print(data[4] - '0');
+      Serial.println((char*)(data+6));
+      setAntennaName(data[4] - '0', (char *)(data+6));
+      responseNewNames();
+      updateDisplay();
     }
     else {
+      Serial.println("else");
       activeAntenna = atoi((char*)data);
       Serial.print("set antenna: ");
       Serial.println(activeAntenna);
@@ -68,12 +83,12 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
   }
 }
 
-void initWebSocket() {
+void initWebSocket(void) {
   ws.onEvent(onEvent);
   server.addHandler(&ws);
 }
 
-void updateDisplay() {
+void updateDisplay(void) {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(WiFi.localIP());

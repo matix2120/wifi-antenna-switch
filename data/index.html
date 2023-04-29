@@ -82,7 +82,7 @@
     websocket.send(buttonNumber);
     updateColor(buttonNumber);
     console.log("set antenna: " +buttonNumber);
-    
+
     //document.getElementById('state').innerHTML = "Antenna "+buttonNumber;
   }
 
@@ -91,12 +91,13 @@
     var name = prompt("Nowa nazwa (bez polskich znakow):", "");
 
     if (name != null) {
-      console.log(buttonNumber + " New name: " + name);
-      const nameJson = {
-        button: name
-      };
-      websocket.send(JSON.stringify(nameJson));
-    } else { 
+      console.log("new," + buttonNumber + "," + name);
+      // const nameJson = {
+      //   button: name
+      // };
+      //websocket.send(JSON.stringify(nameJson));
+      websocket.send("new," + buttonNumber + "," + name);
+    } else {
       console.log("No new name.");
     }
   }
