@@ -10,15 +10,29 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <RotaryEncoder.h>
+#include "PCF8574.h"
+
+// Set i2c address
+
 
 #include "configuration.h"
 
+#define PIN_IN1 D5
+#define PIN_IN2 D6
+#define ROTARYMIN 0
+#define ROTARYMAX 5
+
 void updateDisplay(void);
 
+PCF8574 pcf8574(0x3A);
 LiquidCrystal_I2C lcd(0x27,20,2);
+RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
+int lastPos = -1;
 bool ledState;
 const int ledPin = D4;
 unsigned int activeAntenna = 0;
+
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -33,6 +47,18 @@ void responseNewNames(){
 
   sprintf(json, "[ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" ]", getAntennaName(1), getAntennaName(2), getAntennaName(3), getAntennaName(4), getAntennaName(5));
   ws.textAll(json);
+}
+
+void setCurrentAntenna(uint8_t antenna)
+{
+  for (size_t i = 0; i < 8; i++)
+  {
+    pcf8574.digitalWrite(i, HIGH);
+  }
+  if (antenna > 0)
+  {
+    pcf8574.digitalWrite(antenna-1, LOW); //pcf8574 outputs numbered from zero
+  }
 }
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
@@ -58,6 +84,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     else {
       Serial.println("else");
       activeAntenna = atoi((char*)data);
+      setCurrentAntenna(activeAntenna);
+      encoder.setPosition(activeAntenna);
       Serial.print("set antenna: ");
       Serial.println(activeAntenna);
       responseActiveAntenna();
@@ -89,9 +117,11 @@ void initWebSocket(void) {
 }
 
 void updateDisplay(void) {
-  lcd.clear();
+  //lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(WiFi.localIP());
+  lcd.setCursor(0,1);
+  lcd.print("                ");
   lcd.setCursor(0,1);
   lcd.print(getAntennaName(activeAntenna));
 }
@@ -101,11 +131,25 @@ void setup(){
   lcd.init();
   lcd.backlight();
   lcd.clear();
-  lcd.setCursor(0,0);
+  lcd.setCursor(0,1);
   lcd.print("Startup...");
 
   //set led pin as output
    pinMode(LED_BUILTIN, OUTPUT);
+
+
+  for(int i=0;i<8;i++) {
+    pcf8574.pinMode(i, OUTPUT, HIGH);
+  }
+	Serial.print("Init pcf8574...");
+	if (pcf8574.begin())
+  {
+		Serial.println("OK");
+	}
+  else {
+		Serial.println("KO");
+	}
+
 
 
   if(!LittleFS.begin()){
@@ -167,8 +211,31 @@ void loop() {
   ws.cleanupClients();
   digitalWrite(ledPin, ledState);
 
+  encoder.tick();
+
+  // get the current physical position and calc the logical position
+  int newPos = encoder.getPosition();
+
+  if (newPos < ROTARYMIN) {
+    encoder.setPosition(ROTARYMIN);
+    newPos = ROTARYMIN;
+
+  } else if (newPos > ROTARYMAX) {
+    encoder.setPosition(ROTARYMAX);
+    newPos = ROTARYMAX;
+  }
+
+  if (lastPos != newPos) {
+    Serial.println(newPos);
+
+    lastPos = newPos;
+    activeAntenna = newPos;
+  }
+
   if (previousAntenna != activeAntenna)
   {
+    setCurrentAntenna(activeAntenna);
+    responseActiveAntenna();
     updateDisplay();
     previousAntenna = activeAntenna;
   }
