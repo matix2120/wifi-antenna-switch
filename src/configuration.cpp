@@ -22,7 +22,7 @@ void setAntennaName(unsigned int num, char* name)
         Serial.println("realloc failed");
     }
     memcpy(controllerConfig.antennaNames[num], name, len);
-    controllerConfig.antennaNames[num][len] = NULL;
+    controllerConfig.antennaNames[num][len] = (char)NULL;
     storeConfig();
 }
 
@@ -43,7 +43,7 @@ void loadConfig(void)
     char *buf = configBuf;
     unsigned int nameLen = 0;
 
-    for (unsigned int i = 0; i < 6 && ((buf = strtok(buf, ",")) != NULL); i++)
+    for (unsigned int i = 0; i < NUM_POSITIONS && ((buf = strtok(buf, ",")) != NULL); i++)
     {
         nameLen = strlen(buf)+1;
         controllerConfig.antennaNames[i] = (char *)malloc(nameLen);
@@ -70,7 +70,7 @@ void storeConfig(void)
     char *buf = (char *)calloc(1,1);
     unsigned int bufLen = 0;
 
-    for (unsigned int i = 0; i < 6; i++)
+    for (unsigned int i = 0; i < NUM_POSITIONS; i++)
     {
         unsigned int newNameLen = strlen(controllerConfig.antennaNames[i]) + 1;
         // allocate space for name followed by a comma
@@ -118,5 +118,12 @@ void storeConfig(void)
     Serial.println("Config stored to filesystem");
     Serial.print(buf);
     Serial.println("***");
+    file.close();
+}
+
+void restoreDefaultNames(void)
+{
+    File file = LittleFS.open("/config.txt", "w");
+    file.print("OFF,ant1,ant2,ant3,ant4\n");
     file.close();
 }

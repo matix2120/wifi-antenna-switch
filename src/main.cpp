@@ -20,6 +20,7 @@
 
 #define PIN_IN1 D5
 #define PIN_IN2 D6
+#define PIN_ENCODER D7
 #define ROTARYMIN 0
 #define ROTARYMAX 5
 
@@ -38,6 +39,29 @@ unsigned int activeAntenna = 0;
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
+void configModeCallback (WiFiManager *myWiFiManager) {
+  Serial.println("Entered config mode");
+  Serial.println(WiFi.softAPIP());
+  Serial.println(myWiFiManager->getConfigPortalSSID());
+
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Config mode");
+  lcd.setCursor(0,1);
+  lcd.print(WiFi.softAPIP());
+}
+
+void saveConfigCallback () {
+  Serial.println("WIFI config saved, rebooting");
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Config saved");
+  lcd.setCursor(0,1);
+  lcd.print("Rebooting...");
+  delay(2000);
+  ESP.restart();
+}
+
 void responseActiveAntenna() {
   String answer = String("{\"ant\":\"" + String(activeAntenna) + "\"}");
   ws.textAll(answer);
@@ -45,7 +69,7 @@ void responseActiveAntenna() {
 void responseNewNames(){
   char json[256];
 
-  sprintf(json, "[ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" ]", getAntennaName(1), getAntennaName(2), getAntennaName(3), getAntennaName(4), getAntennaName(5));
+  sprintf(json, "[ \"%s\", \"%s\", \"%s\", \"%s\" ]", getAntennaName(1), getAntennaName(2), getAntennaName(3), getAntennaName(4));
   ws.textAll(json);
 }
 
@@ -117,7 +141,6 @@ void initWebSocket(void) {
 }
 
 void updateDisplay(void) {
-  //lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(WiFi.localIP());
   lcd.setCursor(0,1);
@@ -126,17 +149,47 @@ void updateDisplay(void) {
   lcd.print(getAntennaName(activeAntenna));
 }
 
-void setup(){
+void setup() {
   Serial.begin(115200);
   lcd.init();
   lcd.backlight();
+
+  if(!LittleFS.begin()){
+    Serial.println("An Error has occurred while mounting LittleFS");
+    lcd.clear();
+    lcd.setCursor(0,1);
+    lcd.print("FS Error!");
+    return;
+  }
+
+   pinMode(LED_BUILTIN, OUTPUT);
+   pinMode(PIN_ENCODER, INPUT_PULLUP);
+
+  if (digitalRead(PIN_ENCODER) == 0)
+  {
+    Serial.print("Reseting all settings");
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Reset...");
+    restoreDefaultNames();
+    ESP.eraseConfig();
+    delay(1000);
+    lcd.setCursor(0,1);
+    lcd.print("Release button");
+
+    while (digitalRead(PIN_ENCODER) == 0)
+    {
+      // wait until user no longer holds the button
+    }
+    ESP.restart();
+  }
+
   lcd.clear();
+  lcd.setCursor(8,0);
+  lcd.print("by SP6OM");
+  delay(500);
   lcd.setCursor(0,1);
   lcd.print("Startup...");
-
-  //set led pin as output
-   pinMode(LED_BUILTIN, OUTPUT);
-
 
   for(int i=0;i<8;i++) {
     pcf8574.pinMode(i, OUTPUT, HIGH);
@@ -150,47 +203,15 @@ void setup(){
 		Serial.println("KO");
 	}
 
-
-
-  if(!LittleFS.begin()){
-    Serial.println("An Error has occurred while mounting LittleFS");
-    return;
-  }
-
   loadConfig();
-  Serial.println(getAntennaName(0));
-  setAntennaName(3, "antena podziemna");
-
-
-  storeConfig();
-
-    Serial.println(getAntennaName(0));
-
-  // int memAmount = 1024;
-  // uint8_t * temp = (uint8_t *)malloc(memAmount);
-  // Serial.println(memAmount);
-
-  // while (temp != NULL)
-  // {
-  //   memAmount += 1024;
-  //   temp = (uint8_t*)realloc(temp, memAmount);
-  //   Serial.println(memAmount);
-  // }
-  // free(temp);
-
-  //ESP.eraseConfig();
-  //delay(1000);
-
 
   WiFiManager wifiManager;
-  // wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
+
+  wifiManager.setAPCallback(configModeCallback);
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.autoConnect("AntennaController");
 
-  //ticker.detach();
-   //keep LED on
   digitalWrite(LED_BUILTIN, LOW);
-
-
 
   initWebSocket();
 
@@ -203,6 +224,7 @@ void setup(){
   });
 
   server.begin();
+  lcd.clear();
   updateDisplay();
 }
 

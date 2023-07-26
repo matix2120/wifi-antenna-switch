@@ -21,7 +21,6 @@
       <p><button onClick ="setAntenna(this)" id="button2" class="button-ant">ANT2</button> <button onclick="edit(this)" id="edit2" class="button">edit</button></p>
       <p><button onClick ="setAntenna(this)" id="button3" class="button-ant">ANT3</button> <button onclick="edit(this)" id="edit3" class="button">edit</button></p>
       <p><button onClick ="setAntenna(this)" id="button4" class="button-ant">ANT4</button> <button onclick="edit(this)" id="edit4" class="button">edit</button></p>
-      <p><button onClick ="setAntenna(this)" id="button5" class="button-ant">ANT5</button> <button onclick="edit(this)" id="edit5" class="button">edit</button></p>
     </div>
   </div>
 <script>
@@ -66,7 +65,7 @@
   }
 
   function updateColor(buttonNumber){
-    for (var i = 0; i < 6; i++){
+    for (var i = 0; i < 5; i++){
         if(i != buttonNumber)
         {
             document.getElementById("button"+i).style.backgroundColor = "#0f8b8d";

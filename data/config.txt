@@ -1,1 +1,1 @@
-OFF,Dipol,Drugi Dipol,FD3,Beam 20m,jakastam
+OFF,ant1,ant2,ant3,ant4
