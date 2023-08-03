@@ -22,7 +22,7 @@
 #define PIN_IN2 D6
 #define PIN_ENCODER D7
 #define ROTARYMIN 0
-#define ROTARYMAX 5
+#define ROTARYMAX (NUM_POSITIONS - 1)
 
 void updateDisplay(void);
 
