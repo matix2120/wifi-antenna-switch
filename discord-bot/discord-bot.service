@@ -1,0 +1,15 @@
+[Unit]
+Description=Discord Antenna Bot
+After=network.target
+
+[Service]
+Type=simple
+User=sp6om
+WorkingDirectory=/home/sp6om/antenna-bot
+ExecStart=/home/sp6om/antenna-bot/.venv/bin/python /home/sp6om/antenna-bot/antenna-bot.py
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
